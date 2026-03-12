@@ -162,7 +162,7 @@ application = get_wsgi_application()
 2. Add these variables:
 
 ```
-GROQ_API_KEY=REPLACE_WITH_YOUR_KEY
+GROQ_API_KEY=your-groq-api-key-here
 AI_PROVIDER=groq
 ```
 
