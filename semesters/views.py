@@ -1563,7 +1563,7 @@ def _build_options_for_paper(question, options_count):
 
 @staff_member_required
 def paper_download(request):
-    """Generate and download Word file in exam format"""
+    """Generate and download Word file - exact match to REM_A_QP_FCSP-II_DVP format"""
     qids = request.session.get('paper_question_ids', [])
     options_count = request.session.get('paper_options_count', 6)
     subject_name = request.session.get('paper_subject_name', 'Paper')
@@ -1577,62 +1577,169 @@ def paper_download(request):
         from docx import Document
         from docx.shared import Pt, Inches
         from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
     except ImportError:
         messages.error(request, 'python-docx is not installed. Run: pip install python-docx')
         return redirect('semesters:paper_preview')
     doc = Document()
+    # Match reference doc margins: top=450, left=right=bottom=1440 twips (1 inch)
+    sect = doc.sections[0]
+    sect.top_margin = Inches(0.31)
+    sect.bottom_margin = Inches(1)
+    sect.left_margin = Inches(1)
+    sect.right_margin = Inches(1)
     font_name = 'Times New Roman'
-    font_size = Pt(12)
-    # Title
-    title = doc.add_paragraph()
-    title_run = title.add_run(f'{subject_name} - MCQ Paper')
-    title_run.font.name = font_name
-    title_run.font.size = font_size
-    title_run.font.bold = True
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    doc.add_paragraph()
-    # Instructions
-    inst = doc.add_paragraph()
-    inst_run = inst.add_run('Instructions: Choose the correct option.')
-    inst_run.font.name = font_name
-    inst_run.font.size = font_size
-    inst_run.font.italic = True
-    doc.add_paragraph()
-    for i, q in enumerate(questions, 1):
-        # Question number and text
-        q_text = (q.question_text or '').strip()
-        lines = q_text.split('\n')
-        q_para = doc.add_paragraph()
-        q_para.paragraph_format.space_before = Pt(14)
-        q_para.paragraph_format.space_after = Pt(4)
-        num_run = q_para.add_run(f'Q{i}. ')
-        num_run.font.name = font_name
-        num_run.font.size = font_size
-        num_run.font.bold = True
-        if lines:
-            txt_run = q_para.add_run(lines[0])
-            txt_run.font.name = font_name
-            txt_run.font.size = font_size
-        for line in lines[1:]:
-            p = doc.add_paragraph()
-            r = p.add_run(line)
+    font_size = Pt(12.5)
+    # Full width: 3 columns (Q.No | Content | Marks) - no spacer column
+    # Usable width = page - margins. Letter 8.5" - 2" = 6.5"
+    usable_width = sect.page_width - sect.left_margin - sect.right_margin
+    col_qno = Inches(0.5)
+    col_marks = Inches(0.5)
+    col_content = usable_width - col_qno - col_marks
+    opt_col_w = int(col_content / 2)  # Options table: 2 equal columns (int required by python-docx)
+    # col_content from Length arithmetic is int (EMU). 1 twip = 635 EMU.
+    col_content_twips = int(col_content / 635) if isinstance(col_content, int) else col_content.twips
+
+    def set_table_full_width(tbl, width_twips):
+        """Set table preferred width so it spans full width of parent cell."""
+        tbl.autofit = False
+        tbl.allow_autofit = False
+        tbl_el = tbl._tbl
+        tblPr = tbl_el.tblPr if tbl_el.tblPr is not None else OxmlElement('w:tblPr')
+        if tbl_el.tblPr is None:
+            tbl_el.insert(0, tblPr)
+        # Remove existing tblW if present
+        for child in list(tblPr):
+            if child.tag == qn('w:tblW'):
+                tblPr.remove(child)
+                break
+        tblW = OxmlElement('w:tblW')
+        tblW.set(qn('w:type'), 'dxa')
+        tblW.set(qn('w:w'), str(width_twips))
+        tblPr.append(tblW)
+        # Set fixed layout
+        for child in list(tblPr):
+            if child.tag == qn('w:tblLayout'):
+                tblPr.remove(child)
+                break
+        tblLayout = OxmlElement('w:tblLayout')
+        tblLayout.set(qn('w:type'), 'fixed')
+        tblPr.append(tblLayout)
+
+    # Header table - Enrollment, University, Instructions (no REMEDIAL, SEMESTER, BRANCH, SET, SUBJECT; DATE/DURATION/TIME/MAX MARKS blank)
+    header_table = doc.add_table(rows=6, cols=1)
+    header_table.style = 'Table Grid'
+    header_texts = [
+        'Enrollment No:',
+        'L. J. UNIVERSITY',
+        'L.J. INSTITUTE OF ENGINEERING AND TECHNOLOGY',
+        'DATE:                                         DURATION:',
+        'TIME:                                         MAX MARKS:',
+        'Instructions\n* All questions are compulsory.\n* Figure to the right indicates marks\n* Assume suitable additional data if necessary and mention them.',
+    ]
+    for i, text in enumerate(header_texts):
+        cell = header_table.rows[i].cells[0]
+        cell.text = ''
+        p = cell.paragraphs[0]
+        if '\n' in text:
+            for line in text.split('\n'):
+                r = p.add_run(line + '\n')
+                r.font.name = font_name
+                r.font.size = font_size
+                r.font.bold = (line == 'Instructions')
+        else:
+            r = p.add_run(text)
             r.font.name = font_name
             r.font.size = font_size
-            p.paragraph_format.left_indent = Inches(0.3)
-        # Options (original order)
+            r.font.bold = (i in (1, 2))  # L. J. UNIVERSITY, L.J. INSTITUTE
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER if i in (1, 2, 3) else WD_ALIGN_PARAGRAPH.LEFT
+    doc.add_paragraph()
+    # MCQ section - Q-1 header row (3 columns: Q-1 | Content | MCQ)
+    def set_table_widths(tbl):
+        tbl.columns[0].width = col_qno
+        tbl.columns[1].width = col_content
+        tbl.columns[2].width = col_marks
+    mcq_header = doc.add_table(rows=1, cols=3)
+    mcq_header.style = 'Table Grid'
+    set_table_widths(mcq_header)
+    mcq_header.rows[0].cells[0].text = 'Q-1'
+    mcq_header.rows[0].cells[1].text = ''
+    mcq_header.rows[0].cells[2].text = 'MCQ'
+    for cell in mcq_header.rows[0].cells:
+        for p in cell.paragraphs:
+            for r in p.runs:
+                r.font.name = font_name
+                r.font.size = font_size
+                r.font.bold = True
+    # MCQ questions - 3 columns: Q.No | Content | Marks (no spacer)
+    for i, q in enumerate(questions, 1):
         options = _build_options_for_paper(q, options_count)
-        for letter, text in options:
-            opt_para = doc.add_paragraph()
-            opt_para.paragraph_format.left_indent = Inches(0.3)
-            opt_para.paragraph_format.space_after = Pt(2)
-            opt_run = opt_para.add_run(f'{letter}) {text}' if text else f'{letter}) ')
-            opt_run.font.name = font_name
-            opt_run.font.size = font_size
+        q_text = (q.question_text or '').strip()
+        row_table = doc.add_table(rows=1, cols=3)
+        row_table.style = 'Table Grid'
+        set_table_widths(row_table)
+        # Col 1: Q number
+        cell_qno = row_table.rows[0].cells[0]
+        cell_qno.text = ''
+        p_qno = cell_qno.paragraphs[0]
+        p_qno.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r_qno = p_qno.add_run(f'{i}.')
+        r_qno.font.name = font_name
+        r_qno.font.size = font_size
+        r_qno.font.bold = True
+        # Col 2: Question + options table
+        cell_content = row_table.rows[0].cells[1]
+        cell_content.text = ''
+        p_quest = cell_content.paragraphs[0]
+        for line in q_text.split('\n'):
+            r = p_quest.add_run(line + '\n')
+            r.font.name = font_name  # Times New Roman 12.5pt for all MCQs
+            r.font.size = font_size
+        p_quest.add_run('\n')
+        # Options table - 2 cols, same size as reference (3986, 3991 twips)
+        n_opts = len(options)
+        opt_rows = (n_opts + 1) // 2
+        opt_table = cell_content.add_table(rows=opt_rows, cols=2)
+        opt_table.style = 'Table Grid'
+        set_table_full_width(opt_table, col_content_twips)
+        opt_table.columns[0].width = opt_col_w
+        opt_table.columns[1].width = opt_col_w
+        for idx, (letter, text) in enumerate(options):
+            row_idx, col_idx = idx // 2, idx % 2
+            opt_cell = opt_table.rows[row_idx].cells[col_idx]
+            opt_cell.text = ''
+            opt_p = opt_cell.paragraphs[0]
+            opt_p.paragraph_format.space_before = Pt(2)
+            opt_p.paragraph_format.space_after = Pt(2)
+            opt_r = opt_p.add_run(f'{letter}) {text}' if text else f'{letter}) ')
+            opt_r.font.name = font_name
+            opt_r.font.size = font_size
+        if n_opts % 2 == 1:
+            last_row = opt_table.rows[opt_rows - 1]
+            last_row.cells[0].merge(last_row.cells[1])
+        # Col 3: Marks
+        cell_marks = row_table.rows[0].cells[2]
+        cell_marks.text = ''
+        p_marks = cell_marks.paragraphs[0]
+        p_marks.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r_marks = p_marks.add_run('[01]')
+        r_marks.font.name = font_name
+        r_marks.font.size = font_size
+        r_marks.font.bold = True
+    doc.add_paragraph()
+    # Footer
+    footer_p = doc.add_paragraph()
+    footer_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    footer_r = footer_p.add_run('ALL THE BEST')
+    footer_r.font.name = font_name
+    footer_r.font.size = Pt(12.5)
+    footer_r.font.bold = True
     from io import BytesIO
     buffer = BytesIO()
     doc.save(buffer)
     buffer.seek(0)
-    filename = f"MCQ_Paper_{subject_name.replace(' ', '_')}.docx"
+    filename = f"REM_A_QP_{subject_name.replace(' ', '_')}_DVP_SEM-IV_Summer_2026.docx"
     response = HttpResponse(buffer.getvalue(), content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     return response
