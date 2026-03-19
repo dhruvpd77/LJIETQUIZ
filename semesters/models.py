@@ -39,12 +39,11 @@ class Unit(models.Model):
         return f"{self.subject.name} - Unit {self.unit_number}"
     
     def get_topics_list(self):
-        """Return topics as a list"""
+        """Return topics as a list. One topic per line (newline-separated). Commas within a line are preserved."""
         if not self.topics:
             return []
-        # Handle both comma-separated and newline-separated topics
-        topics = self.topics.replace('\n', ',').split(',')
-        return [topic.strip() for topic in topics if topic.strip()]
+        lines = self.topics.strip().split('\n')
+        return [line.strip() for line in lines if line.strip()]
     
     class Meta:
         ordering = ['subject', 'unit_number']
@@ -173,6 +172,25 @@ class QuestionReport(models.Model):
     
     class Meta:
         ordering = ['-created_at']
+
+
+class UnitTutorial(models.Model):
+    """Store AI-generated tutorials for unit topics - avoids repeated API calls"""
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='unit_tutorials')
+    unit_number = models.IntegerField()
+    topic = models.CharField(max_length=300)
+    content = models.TextField(help_text="AI-generated tutorial content (markdown)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['subject', 'unit_number', 'topic']
+        unique_together = ['subject', 'unit_number', 'topic']
+        verbose_name = 'Unit Tutorial'
+        verbose_name_plural = 'Unit Tutorials'
+    
+    def __str__(self):
+        return f"{self.subject.name} - Unit {self.unit_number} - {self.topic}"
 
 
 class AdminAuditLog(models.Model):

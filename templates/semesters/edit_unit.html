@@ -41,27 +41,31 @@
                 <label for="topics" class="block text-sm font-medium text-gray-700 mb-2">
                     Topics Covered <span class="text-red-600">*</span>
                 </label>
-                <textarea name="topics" id="topics" rows="10"
-                          placeholder="Enter topics, one per line:&#10;Topic 1&#10;Topic 2&#10;Topic 3&#10;..."
+                <textarea name="topics" id="topics" rows="18"
+                          placeholder="Create Series: Using List, List with Custom Index, Tuple&#10;Create Data Frame: dictionary of list, list of list&#10;set_index(), reset_index()&#10;..."
                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200 font-mono text-sm">{{ unit.topics }}</textarea>
                 <p class="text-sm text-gray-500 mt-1">
-                    List all topics covered in this unit. Enter one topic per line.
+                    Enter <strong>one topic per line</strong>. Commas within a line are kept (e.g. "Create Series: List, Tuple, Dict"). Each line = one AI tutorial topic.
                 </p>
+                <div id="topics-preview" class="mt-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-600 hidden">
+                    <p class="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">Live preview:</p>
+                    <div id="topics-preview-list" class="flex flex-wrap gap-2"></div>
+                </div>
             </div>
             
-            <div class="bg-gray-50 p-4 rounded-lg">
-                <p class="text-sm text-gray-600">
-                    <strong>Current Topics:</strong>
-                    {% if unit.get_topics_list %}
-                        <ul class="list-disc list-inside mt-2 space-y-1">
-                            {% for topic in unit.get_topics_list %}
-                            <li>{{ topic }}</li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <span class="text-gray-400">No topics added yet</span>
-                    {% endif %}
-                </p>
+            <div class="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg border border-gray-200 dark:border-slate-600">
+                <p class="text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">Current Topics ({{ unit.get_topics_list|length }})</p>
+                {% if unit.get_topics_list %}
+                    <div class="flex flex-wrap gap-2">
+                        {% for topic in unit.get_topics_list %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-200 border border-purple-200 dark:border-purple-700">
+                            {{ forloop.counter }}. {{ topic }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <span class="text-gray-400 dark:text-slate-500">No topics added yet</span>
+                {% endif %}
             </div>
             
             <div class="flex gap-4">
@@ -75,5 +79,30 @@
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.getElementById('topics');
+    const preview = document.getElementById('topics-preview');
+    const previewList = document.getElementById('topics-preview-list');
+    
+    function updatePreview() {
+        const val = (textarea.value || '').trim();
+        const topics = val ? val.split('\n').map(t => t.trim()).filter(t => t) : [];
+        if (topics.length > 0) {
+            preview.classList.remove('hidden');
+            previewList.innerHTML = topics.map((t, i) => 
+                '<span class="inline-flex px-2 py-1 rounded text-xs font-medium bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200">' + (i+1) + '. ' + (t.length > 40 ? t.substring(0,37)+'...' : t) + '</span>'
+            ).join('');
+        } else {
+            preview.classList.add('hidden');
+        }
+    }
+    
+    textarea.addEventListener('input', updatePreview);
+    textarea.addEventListener('keyup', updatePreview);
+    updatePreview();
+});
+</script>
 {% endblock %}
 

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Semester, Subject, Question, Unit, ProgrammingQuestion, ProgrammingQuestionAccess, QuestionReport, AdminAuditLog
+from .models import Semester, Subject, Question, Unit, ProgrammingQuestion, ProgrammingQuestionAccess, QuestionReport, AdminAuditLog, UnitTutorial
 
 @admin.register(Semester)
 class SemesterAdmin(admin.ModelAdmin):
@@ -68,6 +68,14 @@ class QuestionReportAdmin(admin.ModelAdmin):
     search_fields = ['reason', 'user__username']
     readonly_fields = ['user', 'question', 'programming_question', 'reason', 'created_at']
     ordering = ['-created_at']
+
+
+@admin.register(UnitTutorial)
+class UnitTutorialAdmin(admin.ModelAdmin):
+    list_display = ['subject', 'unit_number', 'topic', 'updated_at']
+    list_filter = ['subject', 'unit_number']
+    search_fields = ['topic', 'content']
+    readonly_fields = ['created_at', 'updated_at']
 
 
 @admin.register(AdminAuditLog)

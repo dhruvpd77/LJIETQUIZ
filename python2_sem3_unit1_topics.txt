@@ -1,0 +1,19 @@
+Create Series: Using List, List with Custom Index, Tuple, Dictionary, NumPy array, Range
+Create Data Frame: dictionary of list, list of list, list of dicts, dict of series, NumPy array, csv, empty data frame
+set_index(Keys, drop=True, inplace=True), reset_index()
+Data Frame Attributes: shape, size, ndim, columns, index, dtypes, values
+Index: loc, iloc (slicing, edit value, add column, add row)
+View: df.head(n=5), df.tail(n=5), df.Sample(n=None)
+Inspect: df.info(), df.describe(include=None, exclude=None, percentiles)
+Frequency/Unique: unique(), nunique(), df.value_counts(ascending=True)
+Missing Data Handling: df.isnull(), df.fillna(value=None, inplace=False), df.dropna(axis=0, how="any", thresh=None, subset=None, inplace=False), df.drop(labels=None, axis=0, index=None, columns=None, inplace=False)
+Duplicated: df.duplicated(subset=None, keep="first"), df.drop_duplicates(subset=None, keep="first", inplace=False)
+Sorting: df.sort_values(by, axis=0, ascending=True, inplace=False), df.sort_index(axis=0, ascending=True, inplace=False)
+Statistics: sum(axis=0), mean(axis=0), max(axis=0), mod(axis=0), median(axis=0), count(), corr(numeric_only=True), quantile()
+pd.plotting.scatter_matrix(frame, alpha=0.5, figsize=None)
+parallel_coordinates(frame, class_column, cols=None, color=None)
+pd.crosstab(index, columns, margins=False)
+Transformation: df.apply(func, axis=0, raw=False, result_type=None, args=(), **kwargs), df.astype(dtype), df.replace(to_replace=None, value=None, inplace=False)
+Concat and Merge: pd.concat(objs, axis=0, join='outer', ignore_index=False, sort=False), pd.merge(left, right, how='inner', on=None, left_on=None, right_on=None, left_index=False, right_index=False, sort=False, suffixes=('_x', '_y'))
+Groupby: df.groupby(by, axis=0, as_index=True, sort=True) - sum, mean, median, agg, apply, describe, sample, size, nth, groups, nunique, count
+Filtering, Detecting and Removing Outlier

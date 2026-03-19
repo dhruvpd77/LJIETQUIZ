@@ -133,6 +133,140 @@ def get_client_ip(request):
         ip = request.META.get('REMOTE_ADDR')
     return ip
 
+
+@login_required
+def unit_tutorials(request, subject_id, unit):
+    """Show topic-wise AI tutorials for a unit"""
+    subject = get_object_or_404(Subject, id=subject_id)
+    from semesters.models import Unit
+    try:
+        unit_obj = Unit.objects.get(subject=subject, unit_number=unit)
+        topics = unit_obj.get_topics_list()
+        unit_title = unit_obj.title or f'Unit {unit}'
+    except Unit.DoesNotExist:
+        topics = []
+        unit_title = f'Unit {unit}'
+    return render(request, 'quiz/unit_tutorials.html', {
+        'subject': subject,
+        'unit': unit,
+        'unit_title': unit_title,
+        'topics': topics,
+    })
+
+
+def _get_ai_tutorial(prompt, max_tokens=2000):
+    """Generate tutorial content using Groq (longer output for tutorials)"""
+    api_key = getattr(settings, 'GROQ_API_KEY', '')
+    if not api_key:
+        raise Exception('Groq API key not configured. Get free key at: https://console.groq.com/keys')
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    data = {
+        "model": "llama-3.1-8b-instant",
+        "messages": [
+            {"role": "system", "content": "You are an expert educational tutor. Create clear, structured tutorials. Use markdown: ## for headings, **bold** for emphasis, code blocks with ```. Structure: 1) Concept 2) Parameters/Key points 3) Examples for each."},
+            {"role": "user", "content": prompt}
+        ],
+        "max_tokens": max_tokens,
+        "temperature": 0.6
+    }
+    response = requests.post(url, headers=headers, json=data, timeout=60)
+    response.raise_for_status()
+    return response.json()['choices'][0]['message']['content']
+
+
+@login_required
+@require_http_methods(["POST"])
+def generate_topic_tutorial(request):
+    """Generate AI tutorial for a topic - fetch from DB if cached, else generate and store"""
+    from semesters.models import UnitTutorial
+    try:
+        data = json.loads(request.body)
+        topic = (data.get('topic') or '').strip()
+        subject_id = data.get('subject_id')
+        subject_name = (data.get('subject_name') or '').strip()
+        unit_num = data.get('unit')
+        unit_title = (data.get('unit_title') or '').strip()
+        if not topic:
+            return JsonResponse({'success': False, 'error': 'Topic is required'}, status=400)
+        subject = get_object_or_404(Subject, id=subject_id) if subject_id else None
+        # Check if tutorial already exists in DB (fetch from storage)
+        if subject and unit_num is not None:
+            cached = UnitTutorial.objects.filter(
+                subject=subject, unit_number=unit_num, topic=topic
+            ).first()
+            if cached:
+                return JsonResponse({'success': True, 'content': cached.content, 'cached': True})
+        # Rate limit
+        rl_key = f'tutorial_{request.user.id}'
+        count = cache.get(rl_key, 0)
+        if count >= 15:
+            return JsonResponse({'success': False, 'error': 'Rate limit exceeded. Try again in a few minutes.'}, status=429)
+        cache.set(rl_key, count + 1, 120)
+        prompt = f"""Create a comprehensive, in-depth tutorial for students on this topic. Be thorough and educational.
+
+**Topic:** {topic}
+**Subject:** {subject_name or 'General'}
+**Unit:** {unit_title or unit_num or 'N/A'}
+
+Use this EXACT structure with proper markdown. Add blank lines between sections for readability.
+
+## 1. Concept
+
+- Explain the core concept in detail. What is it? Define it clearly.
+- Why do we use it? What problems does it solve?
+- How does it relate to the broader subject? Give context.
+- List 3-5 key characteristics or benefits. Use bullet points.
+- Keep paragraphs short (2-3 sentences max) for easy reading.
+
+## 2. Key Points / Parameters
+
+If the topic has functions, methods, or parameters:
+- Show the full syntax in a code block first.
+- List EACH parameter with:
+  - **Parameter name** (type): Detailed explanation. Default value if any. When to use it.
+- If no parameters, list 5-7 key points students must know.
+- Use bullet points throughout.
+
+## 3. Examples
+
+Provide **4-5 practical examples** (minimum 4). For EACH example:
+
+**Example 1: [Descriptive title]**
+- **What it does:** [1-2 sentence explanation]
+- **Code:**
+```python
+# complete, runnable code
+```
+- **Output:**
+```
+expected output
+```
+
+**Example 2: [Different use case]**
+- Same structure...
+
+**Example 3, 4, 5:** Cover different scenarios - basic usage, with parameters, edge cases, real-world application.
+
+Formatting rules:
+- Use **bold** for important terms and parameter names
+- Use bullet points (-) for all lists
+- Add blank lines between paragraphs and sections
+- Use proper ``` code blocks ``` for ALL code
+- Make each example distinct and teach something new
+- Be detailed - students should learn thoroughly from this tutorial"""
+        content = _get_ai_tutorial(prompt, max_tokens=3500)
+        # Store in DB for future fetches
+        if subject and unit_num is not None:
+            UnitTutorial.objects.update_or_create(
+                subject=subject, unit_number=unit_num, topic=topic,
+                defaults={'content': content}
+            )
+        return JsonResponse({'success': True, 'content': content})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
 @login_required
 @require_http_methods(["POST"])
 def get_programming_solution(request, question_id):

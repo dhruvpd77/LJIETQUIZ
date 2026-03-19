@@ -1,0 +1,24 @@
+Seaborn
+seaborn.heatmap(data, vmin=None, vmax=None, cmap=None, linewidths=0, linecolor='white', annot=True, cbar=True)
+sns.boxplot(x, y, hue, data, color)
+sns.scatterplot(x, y, hue, style, s, data)
+NetworkX
+nx.Graph(), nx.DiGraph(), add_node(1), add_edge(3, 1)
+nx.draw(g, with_labels=True, node_size=1000, node_color='red', width=5, edge_color='blue')
+G.add_nodes_from(['A', 'B', 'C']), G.add_edges_from([('A', 'B'), ('A', 'C'), ('B', 'C')])
+Plotly
+import plotly.express as px, import plotly.io as pio, pio.renderers.default = "notebook"
+Bar chart: simple, group, stack, diverging
+px.bar(x, y, width, height, title, color, hover_data, pattern_shape, barmode, text_auto, text, orientation, color_discrete_map, color_discrete_sequence)
+barmode: stack, group, relative
+Scatter: 2D (group, bubble, group-bubble), 3D, scatter_matrix
+px.scatter(x, y, width, height, title, color, size, color_discrete_map, color_discrete_sequence, symbol, facet_col, facet_row)
+px.scatter_3d(df, x, y, z, color, size, title)
+px.scatter_matrix(df, dimensions, title, color, height, width)
+Line chart: single, multi
+px.line(df, x, y, color, markers, hover_data, color_discrete_map, title, color_discrete_sequence)
+Histogram
+px.histogram(df, x, y, nbins, color, histfunc, pattern_shape, text_auto, color_discrete_map, color_discrete_sequence)
+Pie chart
+fig = px.pie(data, values, names, color_discrete_sequence, title)
+fig.update_traces(textinfo="percent+label", textposition, pull)

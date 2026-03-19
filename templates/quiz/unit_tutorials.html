@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}AI Tutorials - {{ subject.name }} {{ unit_title }}{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="max-w-5xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
+    <!-- Back Button -->
+    <div class="mb-4 sm:mb-6">
+        <a href="{% url 'quiz:select_unit' subject.id %}" class="inline-flex items-center text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium transition duration-200 text-sm sm:text-base">
+            <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            Back to Units
+        </a>
+    </div>
+    
+    <!-- Header -->
+    <div class="bg-gradient-to-br from-teal-600 via-cyan-600 to-emerald-600 text-white rounded-2xl shadow-xl p-6 sm:p-8 mb-6 sm:mb-8 border border-teal-500/20">
+        <div class="flex items-center gap-3 sm:gap-4 mb-3">
+            <div class="bg-white/20 backdrop-blur-sm w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-lg ring-2 ring-white/30">
+                <svg class="w-8 h-8 sm:w-9 sm:h-9" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold mb-1 drop-shadow-sm">{{ subject.name }}</h1>
+                <p class="text-base sm:text-lg md:text-xl opacity-95">{{ unit_title }} · AI Tutorials</p>
+            </div>
+        </div>
+        <p class="text-sm sm:text-base opacity-90 flex items-center gap-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-300 animate-pulse"></span>
+            Topic-wise explanations with concepts, parameters & examples
+        </p>
+    </div>
+    
+    {% if topics %}
+        <div class="space-y-3">
+            {% for topic in topics %}
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-600 overflow-hidden hover:shadow-xl hover:border-teal-200 dark:hover:border-teal-800/50 transition-all duration-300">
+                <button type="button" 
+                        class="tutorial-trigger w-full text-left p-5 sm:p-6 flex items-center justify-between hover:bg-slate-50/80 dark:hover:bg-slate-700/30 transition-colors group"
+                        data-topic="{{ topic }}"
+                        data-subject="{{ subject.name }}"
+                        data-subject-id="{{ subject.id }}"
+                        data-unit="{{ unit }}"
+                        data-unit-title="{{ unit_title }}">
+                    <div class="flex items-center gap-3 sm:gap-4">
+                        <div class="bg-gradient-to-br from-teal-500 to-cyan-600 text-white w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-lg font-bold flex-shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                            {{ forloop.counter }}
+                        </div>
+                        <div>
+                            <h3 class="text-base sm:text-lg font-semibold text-slate-800 dark:text-white group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">{{ topic }}</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Click to view tutorial</p>
+                        </div>
+                    </div>
+                    <svg class="w-5 h-5 sm:w-6 sm:h-6 text-teal-500 dark:text-teal-400 flex-shrink-0 tutorial-arrow transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+                <div class="tutorial-content hidden border-t border-slate-200 dark:border-slate-600 bg-slate-50/50 dark:bg-slate-900/30">
+                    <div class="p-6 sm:p-8 loading-state flex items-center justify-center gap-3 text-teal-600 dark:text-teal-400">
+                        <svg class="animate-spin w-6 h-6" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Generating tutorial...</span>
+                    </div>
+                    <div class="result-state hidden p-6 sm:p-8">
+                        <div class="tutorial-markdown tutorial-content-styled"></div>
+                    </div>
+                    <div class="error-state hidden p-5 sm:p-6">
+                        <div class="text-red-600 dark:text-red-400 text-sm"></div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-lg p-8 sm:p-12 text-center border border-slate-200 dark:border-slate-600">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
+                <svg class="w-8 h-8 text-teal-600 dark:text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">No topics added yet</h3>
+            <p class="text-gray-500 dark:text-slate-400 text-sm">Topics for this unit haven't been configured. Ask your admin to add topics in the Unit settings.</p>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+/* Tutorial content - proper spacing and readability */
+.tutorial-content-styled {
+    font-size: 0.9375rem;
+    line-height: 1.75;
+    color: #374151;
+    letter-spacing: 0.01em;
+}
+.dark .tutorial-content-styled {
+    color: #e2e8f0;
+}
+.tutorial-content-styled > *:first-child { margin-top: 0; }
+.tutorial-content-styled > *:last-child { margin-bottom: 0; }
+.tutorial-content-styled h1 { font-size: 1.5rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #1f2937; }
+.dark .tutorial-content-styled h1 { color: #f1f5f9; }
+.tutorial-content-styled h2 { font-size: 1.25rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.5rem; color: #1f2937; padding-bottom: 0.25rem; border-bottom: 2px solid #0d9488; }
+.dark .tutorial-content-styled h2 { color: #f1f5f9; border-color: #14b8a6; }
+.tutorial-content-styled h3 { font-size: 1.1rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+.tutorial-content-styled p { margin-bottom: 1rem; }
+.tutorial-content-styled ul, .tutorial-content-styled ol { margin: 0.75rem 0 1rem 1.25rem; }
+.tutorial-content-styled li { margin-bottom: 0.5rem; }
+.tutorial-content-styled p + p { margin-top: 0.75rem; }
+.tutorial-content-styled pre {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    color: #e2e8f0;
+    border-left: 4px solid #0d9488;
+    padding: 1rem 1.25rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+.tutorial-content-styled code {
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+    background: #f1f5f9;
+    color: #0f172a;
+    padding: 0.15rem 0.4rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+}
+.tutorial-content-styled pre code {
+    background: transparent;
+    padding: 0;
+    color: inherit;
+}
+.dark .tutorial-content-styled code { background: #334155; color: #e2e8f0; }
+.tutorial-content-styled strong { font-weight: 600; color: #1f2937; }
+.dark .tutorial-content-styled strong { color: #f1f5f9; }
+.tutorial-content-styled hr { margin: 1.5rem 0; border: 0; border-top: 1px solid #e5e7eb; }
+.dark .tutorial-content-styled hr { border-color: #475569; }
+.tutorial-content-styled blockquote { border-left: 4px solid #0d9488; padding-left: 1rem; margin: 1rem 0; color: #6b7280; }
+.dark .tutorial-content-styled blockquote { color: #94a3b8; border-color: #14b8a6; }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const triggers = document.querySelectorAll('.tutorial-trigger');
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+    
+    triggers.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const card = this.closest('.bg-white, .dark\\:bg-slate-800');
+            const content = card.querySelector('.tutorial-content');
+            const arrow = card.querySelector('.tutorial-arrow');
+            
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                arrow.style.transform = 'rotate(180deg)';
+                
+                const loadingEl = content.querySelector('.loading-state');
+                const resultEl = content.querySelector('.result-state');
+                const errorEl = content.querySelector('.error-state');
+                const markdownEl = content.querySelector('.tutorial-markdown');
+                
+                if (markdownEl && markdownEl.dataset.loaded === 'true') {
+                    loadingEl.classList.add('hidden');
+                    errorEl.classList.add('hidden');
+                    resultEl.classList.remove('hidden');
+                    return;
+                }
+                
+                loadingEl.classList.remove('hidden');
+                resultEl.classList.add('hidden');
+                errorEl.classList.add('hidden');
+                markdownEl.innerHTML = '';
+                
+                fetch('{% url "quiz:generate_topic_tutorial" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        topic: this.dataset.topic,
+                        subject_id: parseInt(this.dataset.subjectId) || null,
+                        subject_name: this.dataset.subject,
+                        unit: parseInt(this.dataset.unit) || null,
+                        unit_title: this.dataset.unitTitle || ''
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    loadingEl.classList.add('hidden');
+                    if (data.success) {
+                        marked.setOptions({ breaks: true });
+                        markdownEl.innerHTML = marked.parse(data.content || '');
+                        markdownEl.dataset.loaded = 'true';
+                        resultEl.classList.remove('hidden');
+                    } else {
+                        errorEl.querySelector('div').textContent = data.error || 'Failed to generate tutorial';
+                        errorEl.classList.remove('hidden');
+                    }
+                })
+                .catch(err => {
+                    loadingEl.classList.add('hidden');
+                    errorEl.querySelector('div').textContent = err.message || 'Network error. Please try again.';
+                    errorEl.classList.remove('hidden');
+                });
+            } else {
+                content.classList.add('hidden');
+                arrow.style.transform = '';
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
